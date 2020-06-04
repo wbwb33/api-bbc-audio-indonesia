@@ -9,7 +9,6 @@ COPY . /app
 
 # install dependencies
 RUN npm install pm2 -g \
-  && npm install @nestjs/cli rimraf -g \
   # compile typescript
   && npm run build \
   # Remove dev dependencies
