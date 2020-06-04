@@ -1,0 +1,81 @@
+variables:
+  TAGGING_DEV: ww-dev/api-cache-bbc
+  TAGGING_PROD: ww-prod/api-cache-bbc
+  DOCKER_REPO: registry-intl.ap-southeast-5.aliyuncs.com
+  ENV_LEVEL: '(if [[ "$$CI_COMMIT_REF_NAME" == "development" ]]; then echo dev; elif [[ "$$CI_COMMIT_REF_NAME" == "release" ]]; then echo prod; fi);'
+
+stages:
+  - Versioner
+  - Install Dependencies
+  - Build Image and Push
+  - Update Version
+
+versioner:
+  image: dennbagas/win-semver
+  stage: Versioner
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /(\[build])/ && $CI_COMMIT_BRANCH == "release" || $CI_COMMIT_MESSAGE =~ /(\[build])/ && $CI_COMMIT_BRANCH == "development"
+  tags:
+    - bastion-runner
+  script:
+    - BUILD_LEVEL=$(eval $ENV_LEVEL)
+    - NEXT_VERSION=$(win bump --build-level $BUILD_LEVEL)
+    - echo $NEXT_VERSION
+    - echo $NEXT_VERSION > next
+  artifacts:
+    paths:
+      - next
+    expire_in: 30 mins
+
+install dependencies:
+  image: node:14.4.0-alpine
+  stage: Install Dependencies
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /(\[build])/ && $CI_COMMIT_BRANCH == "release" || $CI_COMMIT_MESSAGE =~ /(\[build])/ && $CI_COMMIT_BRANCH == "development"
+  tags:
+    - bastion-runner
+  cache: 
+    key: $CI_COMMIT_REF_SLUG-$CI_PROJECT_DIR
+    paths:
+      - node_modules/
+  script:
+    - npm ci
+
+Docker build:
+  image: docker:latest
+  services:
+    - docker:dind
+  stage: Build Image and Push
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /(\[build])/ && $CI_COMMIT_BRANCH == "release" || $CI_COMMIT_MESSAGE =~ /(\[build])/ && $CI_COMMIT_BRANCH == "development"
+  tags:
+    - bastion-runner 
+  cache: 
+    key: $CI_COMMIT_REF_SLUG-$CI_PROJECT_DIR
+    paths:
+      - node_modules/
+    policy: pull
+  before_script:
+    - BUILD_LEVEL=$(eval $ENV_LEVEL)
+    - NEXT_VERSION=$(cat ./next)
+    - REPO=ww-$BUILD_LEVEL/api-cache-bbc
+    - export TAG=$DOCKER_REPO/$REPO:$NEXT_VERSION
+    - echo $TAG
+  script:  
+    - docker build -t $TAG .
+    - echo "$DOCKER_ALI_PASSWORD" | docker login -u "$DOCKER_ALI_USER" --password-stdin $DOCKER_REPO
+    - docker push $TAG && docker image rm $TAG
+
+update version:
+  image: dennbagas/win-semver
+  stage: Update Version
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /(\[build])/ && $CI_COMMIT_BRANCH == "release" || $CI_COMMIT_MESSAGE =~ /(\[build])/ && $CI_COMMIT_BRANCH == "development"
+  tags:
+    - bastion-runner
+  script:
+    - BUILD_LEVEL=$(eval $ENV_LEVEL)
+    - OLD_VERSION=$(win get-latest-tag $BUILD_LEVEL)
+    - NEXT_VERSION=$(cat ./next)
+    - echo $NEXT_VERSION-$BUILD_LEVEL
+    - if [[ "$CI_COMMIT_MESSAGE" =~ \[keep-old-tag\] ]]; then win push-tag $NEXT_VERSION-$BUILD_LEVEL; else win push-tag $NEXT_VERSION-$BUILD_LEVEL --delete-old-tag $OLD_VERSION; fi

@@ -1,0 +1,11 @@
+/.vscode
+/.git
+/dist
+/node_modules
+/test
+.gitignore
+.version
+.env
+nodemon.json
+tslint.json
+README.md
