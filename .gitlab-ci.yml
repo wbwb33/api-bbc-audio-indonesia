@@ -1,4 +1,4 @@
-variables:
+variables: 
   TAGGING_DEV: ww-dev/api-cache-bbc
   TAGGING_PROD: ww-prod/api-cache-bbc
   DOCKER_REPO: registry-intl.ap-southeast-5.aliyuncs.com
