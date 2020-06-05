@@ -15,6 +15,7 @@ export class AppService {
 
   async getHello(): Promise<object> {
     const data = JSON.parse(await this.getFromCache());
+    this.logger.log("Get BBC Audio list","GettingResource");
     return data;
   }
 
@@ -43,6 +44,7 @@ export class AppService {
 
 
   // @Cron('*/5 * * * * *')
+  @Cron('00 30 06 * * *')
   async getResource(): Promise<void> {
     const arrayAudioInString = await this.getFromUrl();
     const toReturn = JSON.parse(
