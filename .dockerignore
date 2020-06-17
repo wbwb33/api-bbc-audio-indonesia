@@ -1,11 +1,6 @@
-/.vscode
-/.git
-/dist
-/node_modules
-/test
-.gitignore
-.version
 .env
+.eslintrc
+.gitignore
+.prettierrc
 nodemon.json
-tslint.json
 README.md
