@@ -62,7 +62,7 @@ export class AppService {
     const options = {
       uri: 'http://podcasts.files.bbci.co.uk/p02pc9v6.rss',
       xml: true
-    }
+    } 
 
     const a = await rp(options)
       .then(xml => {
