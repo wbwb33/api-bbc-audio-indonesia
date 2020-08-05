@@ -49,34 +49,36 @@ export class AppService {
     const arrayAudioInString = await this.getFromUrl();
     const toReturn = JSON.parse(
       `{
-        "success": true,
+        "status": "success",
         "message": "BBC Audio Found",
         "data": ${arrayAudioInString}
       }`);
-      
+
     await this.setToIgnite(JSON.stringify(toReturn));
     this.logger.log("succesfully save BBC","SavingResource");
-    // return toReturn;
   }
 
   private async getFromUrl(): Promise<string> {
     const options = {
       uri: 'http://podcasts.files.bbci.co.uk/p02pc9v6.rss',
       xml: true
-    }
+    } 
 
     const a = await rp(options)
       .then(xml => {
         const html = $.load(xml).xml();
-        const tmpDate = moment($('itunes\\:image > pubdate', html).text()).toISOString();
-        
-        const tmp: string[] = [];
-        for(let i=0;i<5;i++){
-          tmp.push($('atom\\:link > item > enclosure', html).eq(i).attr('url'));
+        const tmpDate = moment($('itunes\\:image > pubdate', html).text()).utcOffset(420).toString();
+        const items = $('atom\\:link > item', html);
+
+        const tmp = {};
+        for(let i=0;i<items.length;i++){
+          const tmpDate = moment($('pubDate', items).eq(i).text()).format('DD-MM-YYYY');
+          tmp[tmpDate] = $('enclosure', items).eq(i).attr('url');          
         }
 
         const final = `{
-          "lastUpdate": "${tmpDate}",
+          "lastUpdateDate": "${tmpDate}",
+          "lastUpdateAudio": "${$('enclosure', items).eq(0).attr('url')}",
           "audio": ${JSON.stringify(tmp)}
         }`
 
